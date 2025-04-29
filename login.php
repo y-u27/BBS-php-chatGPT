@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>ログイン</title>
 </head>
 <body>
-  <h1>ログイン</h1>
+  <h1 class="ti">ログイン</h1>
 
   <?php if (!empty($error)) : ?>
     <p style="color: red;"><?php echo htmlspecialchars($error, ENT_QUOTES); ?></p>
