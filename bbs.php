@@ -85,19 +85,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <small>投稿日：<?php echo $p['created_at']; ?></small>
 
               <!-- 編集ボタン -->
+              <?php if ($_SESSION['user'] === $p['user']) ?>
               <form method="post" style="display:inline;">
                 <input type="hidden" name="edit" value="<?php echo $i; ?>">
                 <button type="submit">編集</button>
               </form>
+            <?php endif; ?>
 
-              <!-- 削除ボタン -->
-              <!-- ログインユーザーと投稿ユーザーが一致している場合のみ、削除ボタンを表示 -->
-              <?php if ($_SESSION['user'] === $p['user']): ?>
-                <form method="post" style="display:inline;">
-                  <input type="hidden" name="delete" value="<?php echo $i; ?>">
-                  <button type="submit">削除</button>
-                </form>
-              <?php endif; ?>
+            <!-- 削除ボタン -->
+            <!-- ログインユーザーと投稿ユーザーが一致している場合のみ、削除ボタンを表示 -->
+            <?php if ($_SESSION['user'] === $p['user']): ?>
+              <form method="post" style="display:inline;">
+                <input type="hidden" name="delete" value="<?php echo $i; ?>">
+                <button type="submit">削除</button>
+              </form>
             <?php endif; ?>
           </div>
         <?php endforeach; ?>
@@ -107,10 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <div class="logout">
-      <a href="logout.php">ログアウト</a>
+      <a href="logout.php" onclick="return confirm('本当にログアウトしますか？');">ログアウト</a>
     </div>
   </div>
-
 </body>
 
 </html>
