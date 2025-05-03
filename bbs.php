@@ -8,20 +8,28 @@ if (!isset($_SESSION['user'])) {
   exit();
 }
 
-// 投稿一覧が未定義なら初期化する
-if (!isset($_SESSION['posts'])) {
-  $_SESSION['posts'] = [];
-}
+// DB接続ファイル読み込み
+require_once('db_connect.php');
 
 // 投稿保存処理
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isset($_POST['post'])) {
-    // 投稿処理
+    // 投稿処理（DBに保存）
     $post = $_POST['post'];
+    $username = $_SESSION['user'];
+
+    if (!empty($post)) {
+      $stmt = $pdo->prepare("INSERT INTO posts (username,content,created_at) VALUES (?,?,NOW())");
+      $stmt->execute(([$username, $post]));
+    }
+    // 投稿データの保存（セッションにも保存する場合）
+    if (!isset($_SESSION['posts'])) {
+      $_SESSION['posts'] = [];
+    }
     // 投稿日時設定
     $now = date('Y/m/d H:i');
     // 投稿ID設定
-    $id = count($_SESSION['posts']) + 1;
+    $id = isset($_SESSION['posts']) ? count($_SESSION['posts']) + 1 : 1;
     $_SESSION['posts'][] = ['id' => $id, 'user' => $_SESSION['user'], 'content' => $post, 'created_at' => $now];
   } elseif (isset($_POST['delete'])) {
     // 削除機能
@@ -41,6 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['posts'][$index]['content'] = $new_content;
   }
 }
+
+$stmt = $pdo->query(("SELECT * FROM posts ORDER BY created_at DESC"));
+$posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!-- HTML部分 -->
@@ -65,11 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <h2>投稿一覧</h2>
     <div class="posts">
-      <?php if (!empty($_SESSION['posts'])): ?>
-        <?php foreach ($_SESSION['posts'] as $i => $p): ?>
+      <?php if (!empty($posts)): ?>
+        <?php foreach ($posts as $p): ?>
           <div class="post-card">
-            <strong><?php echo $p['id']; ?></strong><br>
-            <strong><?php echo htmlspecialchars($p['user']) ?></strong><br>
+            <strong><?php echo htmlspecialchars($p['id']); ?></strong><br>
+            <strong><?php echo htmlspecialchars($p['username']) ?></strong><br>
 
             <?php if (isset($edit_index) && $edit_index == $i): ?>
               <!-- 編集フォーム表示 -->
@@ -82,21 +93,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php else: ?>
               <!-- 通常表示 -->
               <p><?php echo nl2br(htmlspecialchars($p['content'])); ?></p>
-              <small>投稿日：<?php echo $p['created_at']; ?></small>
+              <small>投稿日：<?php echo htmlspecialchars($p['created_at']); ?></small>
 
               <!-- 編集ボタン -->
-              <?php if ($_SESSION['user'] === $p['user']) ?>
+              <?php if ($_SESSION['user'] === $p['username']) ?>
               <form method="post" style="display:inline;">
-                <input type="hidden" name="edit" value="<?php echo $i; ?>">
+                <input type="hidden" name="edit" value="<?php echo $p['id']; ?>">
                 <button type="submit">編集</button>
               </form>
             <?php endif; ?>
 
             <!-- 削除ボタン -->
             <!-- ログインユーザーと投稿ユーザーが一致している場合のみ、削除ボタンを表示 -->
-            <?php if ($_SESSION['user'] === $p['user']): ?>
+            <?php if ($_SESSION['user'] === $p['username']): ?>
               <form method="post" style="display:inline;">
-                <input type="hidden" name="delete" value="<?php echo $i; ?>">
+                <input type="hidden" name="delete" value="<?php echo $p['id']; ?>">
                 <button type="submit">削除</button>
               </form>
             <?php endif; ?>
