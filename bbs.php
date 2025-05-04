@@ -11,6 +11,9 @@ if (!isset($_SESSION['user'])) {
 // DB接続ファイル読み込み
 require_once('db_connect.php');
 
+// 初期化
+$edit_id = null;
+
 // 投稿保存処理
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   if (isset($_POST['post'])) {
@@ -18,35 +21,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $post = $_POST['post'];
     $username = $_SESSION['user'];
 
+    // prepareメソッドで以下のSQL文を準備
+    // executeメソッドでSQLを実行
     if (!empty($post)) {
       $stmt = $pdo->prepare("INSERT INTO posts (username,content,created_at) VALUES (?,?,NOW())");
       $stmt->execute(([$username, $post]));
     }
-    // 投稿データの保存（セッションにも保存する場合）
-    if (!isset($_SESSION['posts'])) {
-      $_SESSION['posts'] = [];
-    }
-    // 投稿日時設定
-    $now = date('Y/m/d H:i');
-    // 投稿ID設定
-    $id = isset($_SESSION['posts']) ? count($_SESSION['posts']) + 1 : 1;
-    $_SESSION['posts'][] = ['id' => $id, 'user' => $_SESSION['user'], 'content' => $post, 'created_at' => $now];
   } elseif (isset($_POST['delete'])) {
-    // 削除機能
-    $delete_index = $_POST['delete'];
-    if (isset($_SESSION['posts'][$delete_index])) {
-      unset($_SESSION['posts'][$delete_index]);
-      // 配列の添字を振り直す(きれいにする)
-      $_SESSION['posts'] = array_values($_SESSION['posts']);
-    }
+    // 削除処理（DBから削除）
+    $post_id = $_POST['delete'];
+    $stmt = $pdo->prepare("DELETE FROM posts WHERE id = ? AND username = ?");
+    $stmt->execute([$post_id, $_SESSION['user']]);
   } elseif (isset($_POST['edit'])) {
-    // 編集フォーム表示用(あとで表示側で使う)
-    $edit_index = $_POST['edit'];
+    // 編集ファーム表示用（対象の投稿IDを保持）
+    $edit_id = $_POST['edit'];
   } elseif (isset($_POST['save_edit'])) {
-    // 編集内容保存
-    $index = $_POST['save_edit'];
+    // 編集保存（DBを更新）
+    $post_id = $_POST['save_edit'];
     $new_content = $_POST['edited_content'];
-    $_SESSION['posts'][$index]['content'] = $new_content;
+
+    $stmt = $pdo->prepare(("UPDATE posts SET content = ? WHERE id = ? AND username = ?"));
+    $stmt->execute([$new_content, $post_id, $_SESSION['user']]);
   }
 }
 
@@ -82,10 +77,10 @@ $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <strong><?php echo htmlspecialchars($p['id']); ?></strong><br>
             <strong><?php echo htmlspecialchars($p['username']) ?></strong><br>
 
-            <?php if (isset($edit_index) && $edit_index == $i): ?>
+            <?php if (isset($edit_id) && $edit_id == $p['id']): ?>
               <!-- 編集フォーム表示 -->
               <form method="post">
-                <input type="hidden" name="save_edit" value="<?php echo $i; ?>">
+                <input type="hidden" name="save_edit" value="<?php echo $p['id']; ?>">
                 <textarea name="edited_content"><?php echo htmlspecialchars($p['content']); ?></textarea>
                 <br>
                 <button type="submit">編集を保存</button>
